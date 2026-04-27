@@ -1,7 +1,10 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Request
 import json
-from app.github import comment_on_pr, process_pr
-from analyzer import run_analysis
+from app.github import comment_on_pr, get_pr_diff
+from app.analyzer import run_analysis
 
 app = FastAPI()
 
@@ -10,6 +13,7 @@ async def github_webhook(request: Request):
     payload = await request.json()
     
     if payload.get("action") in ["opened", "synchronize"]:
+        print("PR event triggered")
         process_pr(payload)
         
     return {"status": "ok"}

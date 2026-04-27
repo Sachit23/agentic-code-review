@@ -1,5 +1,7 @@
 import requests, os
+import logging
 
+# `load_dotenv()` is called centrally in `app.main` on startup.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 def analyze_code(diff):
@@ -14,16 +16,21 @@ def analyze_code(diff):
     Diff:
     {diff}
     """
-    
+
     payload = {
-        "content": [
+        "contents": [
             {
                 "parts": [{"text": prompt}]
             }
         ]
     }
-    
+
     response = requests.post(url, json=payload)
     result = response.json()
-    return result["candidates"][0]["content"]["parts"][0]["text"]
 
+    print("Gemini response:", result)
+
+    if "candidates" not in result:
+        return f"Gemini API Error:\n{result}"
+
+    return result["candidates"][0]["content"]["parts"][0]["text"]
