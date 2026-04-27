@@ -1,5 +1,7 @@
 import requests, os
+import logging
 
+# `load_dotenv()` is called centrally in `app.main` on startup.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 def analyze_code(diff):

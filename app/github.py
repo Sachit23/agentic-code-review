@@ -1,5 +1,6 @@
 import requests, os
 
+# `load_dotenv()` is called centrally in `app.main` on startup.
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 def get_pr_diff(repo, pr_number):
