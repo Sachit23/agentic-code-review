@@ -14,3 +14,15 @@ def get_pr_diff(repo, pr_number):
     #response.raise_for_status()
     return response.text
 
+def comment_on_pr(repo, pr_number, comment):
+    url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
+    
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}"
+    }
+    
+    data = {
+        "body": comment
+    }
+    
+    requests.post(url, json=data, headers=headers)
