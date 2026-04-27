@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 import json
-from app.github import process_pr
+from app.github import comment_on_pr, process_pr
+from analyzer import run_analysis
 
 app = FastAPI()
 
@@ -12,3 +13,12 @@ async def github_webhook(request: Request):
         process_pr(payload)
         
     return {"status": "ok"}
+
+def process_pr(payload):
+    repo = payload["repository"]["full_name"]
+    pr_number = payload["number"]
+    
+    diff = get_pr_diff(repo, pr_number)
+    analysis = run_analysis(diff)
+    
+    comment_on_pr(repo, pr_number, analysis)
