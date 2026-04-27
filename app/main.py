@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 import json
-from app.github import comment_on_pr, process_pr
+from app.github import comment_on_pr, process_pr, get_pr_diff
 from analyzer import run_analysis
 
 app = FastAPI()
