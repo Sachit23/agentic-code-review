@@ -1,12 +1,14 @@
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 from fastapi import FastAPI, Request
-import json
 from app.github import comment_on_pr, get_pr_diff
-from app.analyzer import run_analysis
+from app.graph import build_graph
+from app.llm import GeminiAPIError
 
 app = FastAPI()
+
+graph = build_graph()
 
 @app.post("/webhook")
 async def github_webhook(request: Request):
@@ -14,7 +16,14 @@ async def github_webhook(request: Request):
     
     if payload.get("action") in ["opened", "synchronize"]:
         print("PR event triggered")
-        process_pr(payload)
+        try:
+            process_pr(payload)
+        except GeminiAPIError as exc:
+            print(f"Skipping AI review: {exc}")
+            return {"status": "skipped", "reason": str(exc)}
+        except Exception as exc:
+            print(f"Failed to process PR webhook: {exc}")
+            return {"status": "error", "reason": str(exc)}
         
     return {"status": "ok"}
 
@@ -23,6 +32,25 @@ def process_pr(payload):
     pr_number = payload["number"]
     
     diff = get_pr_diff(repo, pr_number)
-    analysis = run_analysis(diff)
     
-    comment_on_pr(repo, pr_number, analysis)
+    result = graph.invoke({
+        "diff": diff,
+        "security": "",
+        "tests": "",
+        "refactor": ""
+    })
+    
+    final_comment = f"""
+    🔍 **AI Code Review**
+
+    🛡️ Security:
+    {result['security']}
+
+    🧪 Tests:
+    {result['tests']}
+
+    ♻️ Refactor:
+    {result['refactor']}
+    """
+    
+    comment_on_pr(repo, pr_number, final_comment)
