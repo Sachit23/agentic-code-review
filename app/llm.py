@@ -1,21 +1,22 @@
-import requests, os
 import logging
+import os
 
-# `load_dotenv()` is called centrally in `app.main` on startup.
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+import requests
 
-def analyze_code(diff):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
 
-    prompt = f"""
-    Review this code diff:
-    - Find bugs
-    - Suggest improvements
-    - Identify security issues
+logger = logging.getLogger(__name__)
 
-    Diff:
-    {diff}
-    """
+
+class GeminiAPIError(RuntimeError):
+    pass
+
+
+def analyze_code(prompt: str):
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise GeminiAPIError("GEMINI_API_KEY is missing. Add it to .env and restart uvicorn.")
+
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
     payload = {
         "contents": [
@@ -25,12 +26,22 @@ def analyze_code(diff):
         ]
     }
 
-    response = requests.post(url, json=payload)
-    result = response.json()
+    try:
+        response = requests.post(url, params={"key": api_key}, json=payload, timeout=30)
+        result = response.json()
+    except requests.RequestException as exc:
+        raise GeminiAPIError(f"Gemini request failed: {exc}") from exc
+    except ValueError as exc:
+        raise GeminiAPIError("Gemini returned a non-JSON response.") from exc
 
-    print("Gemini response:", result)
+    if response.status_code >= 400:
+        error = result.get("error", {})
+        message = error.get("message", "Unknown Gemini API error")
+        status = error.get("status", response.reason)
+        logger.error("Gemini API error: %s (%s)", message, status)
+        raise GeminiAPIError(f"{message} ({status})")
 
     if "candidates" not in result:
-        return f"Gemini API Error:\n{result}"
+        raise GeminiAPIError(f"Gemini response did not include candidates: {result}")
 
     return result["candidates"][0]["content"]["parts"][0]["text"]
